@@ -9,8 +9,12 @@ from tasks.auth_views import (
     CookieLogoutView,
     CurrentUserView,
 )
+from django.http import JsonResponse
 
+def healthz(request):
+    return JsonResponse({"status": "ok"})
 urlpatterns = [
+    path("healthz", healthz, name="healthz"),
     path("admin/", admin.site.urls),
 
     # CSRF protection
