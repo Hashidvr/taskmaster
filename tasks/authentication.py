@@ -6,8 +6,10 @@ from rest_framework.authentication import (
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.middleware.csrf import CsrfViewMiddleware
+import logging
+from django.conf import settings
 
-
+logger = logging.getLogger(__name__)
 class CSRFCheck(CsrfViewMiddleware):
     def _reject(self, request, reason):
         return reason
@@ -25,6 +27,16 @@ def enforce_csrf(request):
     )
 
     if reason:
+        logger.warning(
+            "CSRF verification failed: reason=%s, "
+            "origin=%s, csrf_cookie_present=%s, "
+            "csrf_header_present=%s",
+            reason,
+            request.META.get("HTTP_ORIGIN", "missing"),
+            bool(request.COOKIES.get(settings.CSRF_COOKIE_NAME)),
+            bool(request.META.get("HTTP_X_CSRFTOKEN")),
+        )
+
         raise PermissionDenied(
             f"CSRF verification failed: {reason}"
         )
