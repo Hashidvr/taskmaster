@@ -1,7 +1,10 @@
-
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
+    {
+      "source": "/api/v5/(.*)",
+      "destination": "https://taskmaster-y5zj.onrender.com/api/v5/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
