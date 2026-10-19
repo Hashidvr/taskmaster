@@ -208,6 +208,16 @@ CSRF_TRUSTED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+# Production frontend origin
+VERCEL_FRONTEND_ORIGIN = "https://taskmaster-hashi8.vercel.app"
+
+if VERCEL_FRONTEND_ORIGIN not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(VERCEL_FRONTEND_ORIGIN)
+
+if VERCEL_FRONTEND_ORIGIN not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(VERCEL_FRONTEND_ORIGIN)
+
+
 JWT_COOKIE_SAMESITE = os.getenv(
     "JWT_COOKIE_SAMESITE",
     "Lax",
