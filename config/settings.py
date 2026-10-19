@@ -220,7 +220,7 @@ if VERCEL_FRONTEND_ORIGIN not in CSRF_TRUSTED_ORIGINS:
 
 JWT_COOKIE_SAMESITE = os.getenv(
     "JWT_COOKIE_SAMESITE",
-    "Lax",
+    "None" if not DEBUG else "Lax",
 )
 
 # Production security settings
@@ -233,7 +233,7 @@ if not DEBUG:
     # Cookies must only be sent over HTTPS.
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
+    CSRF_COOKIE_SAMESITE = "None"
     # Additional browser security.
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"

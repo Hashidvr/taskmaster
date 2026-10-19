@@ -6,27 +6,34 @@ const api = axios.create({
     withCredentials: true,
 });
 
-function getCookie(name) {
-    const cookies = document.cookie
-        ? document.cookie.split(";")
-        : [];
+let csrfToken = null;
+let csrfRequest = null;
 
-    for (const cookie of cookies) {
-        const trimmedCookie = cookie.trim();
+export async function ensureCsrfToken() {
+    // Avoid duplicate simultaneous CSRF requests.
+    if (!csrfRequest) {
+        csrfRequest = api
+            .get("csrf/")
+            .then((response) => {
+                csrfToken = response.data?.csrfToken || null;
 
-        if (trimmedCookie.startsWith(`${name}=`)) {
-            return decodeURIComponent(
-                trimmedCookie.substring(name.length + 1)
-            );
-        }
+                if (!csrfToken) {
+                    throw new Error(
+                        "The server did not return a CSRF token."
+                    );
+                }
+
+                return csrfToken;
+            })
+            .finally(() => {
+                csrfRequest = null;
+            });
     }
 
-    return null;
+    return csrfRequest;
 }
 
 api.interceptors.request.use((config) => {
-    const csrfToken = getCookie("csrftoken");
-
     const method = (config.method || "get").toLowerCase();
 
     if (
@@ -44,28 +51,27 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+        const url = originalRequest?.url || "";
+
+        const isAuthenticationEndpoint =
+            url.includes("token/") ||
+            url.includes("logout/") ||
+            url.includes("register/") ||
+            url.includes("csrf/") ||
+            url.includes("auth/me/");
 
         if (
             error.response?.status === 401 &&
             originalRequest &&
             !originalRequest._retry &&
-            !originalRequest.url?.includes("token/") &&
-            !originalRequest.url?.includes("logout/") &&
-            !originalRequest.url?.includes("register/") &&
-            !originalRequest.url?.includes("csrf/")
+            !isAuthenticationEndpoint
         ) {
             originalRequest._retry = true;
 
             try {
-                // Ensure a CSRF cookie exists before refreshing.
-                if (!getCookie("csrftoken")) {
-                    await api.get("csrf/");
-                }
-
+                await ensureCsrfToken();
                 await api.post("token/refresh/", {});
 
-                // The browser receives the new access cookie
-                // automatically from the server.
                 return api(originalRequest);
             } catch (refreshError) {
                 console.error(
@@ -74,17 +80,7 @@ api.interceptors.response.use(
                         refreshError.message
                 );
 
-                // Best-effort cookie cleanup through Django.
-                try {
-                    if (!getCookie("csrftoken")) {
-                        await api.get("csrf/");
-                    }
-
-                    await api.post("logout/", {});
-                } catch {
-                    // The session may already be expired.
-                }
-
+                // Do not make another logout request if refresh fails.
                 if (window.location.pathname !== "/login") {
                     window.location.href = "/login";
                 }

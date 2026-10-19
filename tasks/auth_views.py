@@ -89,9 +89,24 @@ class CSRFTokenView(APIView):
     def get(self, request):
         csrf_token = get_token(request._request)
 
-        return Response({
+        response = Response({
             "csrfToken": csrf_token,
         })
+
+        response.set_cookie(
+            key=settings.CSRF_COOKIE_NAME,
+            value=request._request.META.get("CSRF_COOKIE"),
+            secure=not settings.DEBUG,
+            httponly=False,
+            samesite=getattr(
+                settings,
+                "CSRF_COOKIE_SAMESITE",
+                "Lax",
+            ),
+            path="/",
+        )
+
+        return response
 
 
 class CookieLoginView(APIView):

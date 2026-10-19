@@ -3,8 +3,9 @@ import {
     useEffect,
     useState,
 } from "react";
+
 import { AuthContext } from "./authContextDefinition";
-import api from "../api/axios";
+import api, { ensureCsrfToken } from "../api/axios";
 
 export function AuthProvider({ children }) {
     const [username, setUsername] = useState(null);
@@ -16,8 +17,8 @@ export function AuthProvider({ children }) {
 
         const restoreSession = async () => {
             try {
-                // Obtain a CSRF cookie before authenticated requests.
-                await api.get("csrf/");
+                // Fetch and retain the CSRF token before API requests.
+                await ensureCsrfToken();
 
                 const response = await api.get("auth/me/");
 
@@ -45,13 +46,15 @@ export function AuthProvider({ children }) {
     }, []);
 
     const login = async (usernameInput, password) => {
-        await api.get("csrf/");
+        // Obtain the CSRF token before submitting credentials.
+        await ensureCsrfToken();
 
         await api.post("token/", {
             username: usernameInput,
             password,
         });
 
+        // Verify that the backend accepted the session cookies.
         const response = await api.get("auth/me/");
 
         setUsername(response.data.username || usernameInput);
@@ -60,7 +63,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         try {
-            await api.get("csrf/");
+            await ensureCsrfToken();
             await api.post("logout/", {});
         } finally {
             setUsername(null);
