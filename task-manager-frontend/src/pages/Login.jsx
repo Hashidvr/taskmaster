@@ -23,8 +23,10 @@ function Login() {
         try {
             await login(username.trim(), password);
             navigate("/dashboard");
-        } catch {
-            setError("Invalid username or password. Please try again.");
+        }  catch (error) {
+                setError(
+                    error.message || "Login failed. Please try again."
+                );
         } finally {
             setLoading(false);
         }

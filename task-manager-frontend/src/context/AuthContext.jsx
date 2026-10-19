@@ -45,21 +45,55 @@ export function AuthProvider({ children }) {
         };
     }, []);
 
+    
     const login = async (usernameInput, password) => {
-        // Obtain the CSRF token before submitting credentials.
-        await ensureCsrfToken();
+        try {
+            await ensureCsrfToken();
+        } catch {
+            throw new Error(
+                "Could not obtain the CSRF token. Please try again."
+            );
+        }
 
-        await api.post("token/", {
-            username: usernameInput,
-            password,
-        });
+        try {
+            await api.post("token/", {
+                username: usernameInput,
+                password,
+            });
+        } catch (error) {
+            const status = error.response?.status;
 
-        // Verify that the backend accepted the session cookies.
-        const response = await api.get("auth/me/");
+            if (status === 401) {
+                throw new Error(
+                    "The backend rejected the login credentials (token endpoint returned 401)."
+                );
+            }
 
-        setUsername(response.data.username || usernameInput);
-        setIsAuthenticated(true);
+            throw new Error(
+                `Login request failed (HTTP ${status ?? "network error"}).`
+            );
+        }
+
+        try {
+            const response = await api.get("auth/me/");
+
+            setUsername(response.data.username || usernameInput);
+            setIsAuthenticated(true);
+        } catch (error) {
+            const status = error.response?.status;
+
+            if (status === 401) {
+                throw new Error(
+                    "Login was accepted, but session verification failed (auth/me returned 401)."
+                );
+            }
+
+            throw new Error(
+                `Session verification failed (HTTP ${status ?? "network error"}).`
+            );
+        }
     };
+
 
     const logout = async () => {
         try {
